@@ -1,0 +1,264 @@
+{
+  "entities": {
+    "Website": {
+      "title": "Website",
+      "description": "Publicly visible website template listing in the AR Tech marketplace. Never stores internal cost breakdowns.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "category": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 600 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "features": { "type": "array", "description": "Up to 10 key features of the website design" },
+        "sellingPrice": { "type": "number", "description": "Computed BDT selling price visible to customers" },
+        "deliveryDays": { "type": "integer" },
+        "techStack": { "type": "string", "maxLength": 160 },
+        "isAiGenerated": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "description",
+        "imageUrl",
+        "features",
+        "sellingPrice",
+        "deliveryDays",
+        "isAiGenerated",
+        "published",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WebsiteCost": {
+      "title": "WebsiteCost",
+      "description": "Admin-only internal cost structure for a website design. Strictly isolated from customers.",
+      "type": "object",
+      "properties": {
+        "websiteId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "domainCost": { "type": "number" },
+        "hostingCost": { "type": "number" },
+        "otherCosts": { "type": "number" },
+        "profitMargin": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "websiteId",
+        "domainCost",
+        "hostingCost",
+        "otherCosts",
+        "profitMargin",
+        "sellingPrice",
+        "updatedAt"
+      ]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Marketplace category definition.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "slug": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 240 },
+        "order": { "type": "integer" }
+      },
+      "required": ["id", "name", "slug", "order"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer website order or Messenger order intent.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerPhone": { "type": "string", "maxLength": 40 },
+        "customerEmail": { "type": "string", "maxLength": 160 },
+        "websiteId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "websiteName": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 80 },
+        "priceBdt": { "type": "number" },
+        "channel": { "type": "string", "enum": ["messenger", "whatsapp", "web"] },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["pending", "contacted", "in_progress", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "customerName",
+        "websiteId",
+        "websiteName",
+        "category",
+        "priceBdt",
+        "channel",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Private customer profile containing PII, strictly restricted to the owner and admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "businessName": { "type": "string", "maxLength": 160 },
+        "source": { "type": "string", "enum": ["web", "whatsapp", "messenger"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "source", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Customer inquiry or message from web or WhatsApp.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "senderContact": { "type": "string", "maxLength": 160 },
+        "channel": { "type": "string", "enum": ["web", "whatsapp", "messenger"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "recommendedWebsite": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["unread", "replied", "handoff", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "senderName", "channel", "content", "status", "createdAt", "updatedAt"]
+    },
+    "PublicSettings": {
+      "title": "PublicSettings",
+      "description": "Public storefront configuration such as Messenger link and hero metadata.",
+      "type": "object",
+      "properties": {
+        "messengerUrl": { "type": "string", "maxLength": 500 },
+        "whatsappNumber": { "type": "string", "maxLength": 40 },
+        "agentEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["messengerUrl", "agentEnabled", "updatedAt"]
+    },
+    "PrivateSettings": {
+      "title": "PrivateSettings",
+      "description": "Admin-only internal settings including default cost formula, profit margin, and n8n/WhatsApp integration details.",
+      "type": "object",
+      "properties": {
+        "defaultDomainCost": { "type": "number" },
+        "defaultHostingCost": { "type": "number" },
+        "defaultOtherCosts": { "type": "number" },
+        "defaultProfitMargin": { "type": "number" },
+        "n8nWebhookUrl": { "type": "string", "maxLength": 500 },
+        "whatsappProvider": { "type": "string", "maxLength": 80 },
+        "whatsappPhoneNumberId": { "type": "string", "maxLength": 120 },
+        "ownerNotifyPhone": { "type": "string", "maxLength": 40 },
+        "agentInstructions": { "type": "string", "maxLength": 3000 },
+        "autoNotifyOwner": { "type": "boolean" },
+        "allowHumanHandoff": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "defaultDomainCost",
+        "defaultHostingCost",
+        "defaultOtherCosts",
+        "defaultProfitMargin",
+        "autoNotifyOwner",
+        "allowHumanHandoff",
+        "updatedAt"
+      ]
+    },
+    "AgentLog": {
+      "title": "AgentLog",
+      "description": "WhatsApp AI Agent interaction and handoff log.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "customerMessage": { "type": "string", "maxLength": 2000 },
+        "agentReply": { "type": "string", "maxLength": 4000 },
+        "language": { "type": "string", "enum": ["bn", "en", "mixed"] },
+        "recommendedWebsiteId": { "type": "string", "maxLength": 128 },
+        "needsHumanHandoff": { "type": "boolean" },
+        "leadCaptured": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "customerMessage",
+        "agentReply",
+        "language",
+        "needsHumanHandoff",
+        "leadCaptured",
+        "createdAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Granted admin user record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/websites/{websiteId}": {
+      "schema": { "$ref": "#/entities/Website" },
+      "description": "Public website template marketplace catalog (published items visible publicly; unpublished visible to admins only)."
+    },
+    "/website_costs/{websiteId}": {
+      "schema": { "$ref": "#/entities/WebsiteCost" },
+      "description": "Admin-only internal cost & profit breakdown per website template."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Marketplace categories."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer website orders."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer PII profiles."
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Customer messages and WhatsApp inquiries."
+    },
+    "/settings/public": {
+      "schema": { "$ref": "#/entities/PublicSettings" },
+      "description": "Publicly readable storefront settings (Messenger URL, WhatsApp number, AI Agent availability)."
+    },
+    "/settings/private": {
+      "schema": { "$ref": "#/entities/PrivateSettings" },
+      "description": "Admin-only pricing formula defaults, n8n webhook URL, and AI Agent configuration."
+    },
+    "/agent_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AgentLog" },
+      "description": "AI Agent conversation audit logs."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin role membership documents."
+    }
+  }
+}

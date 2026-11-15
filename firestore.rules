@@ -1,0 +1,393 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'arunlockertool@gmail.com'
+      );
+    }
+
+    // Validation Helpers
+    function isValidWebsite(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'category', 'description', 'imageUrl', 'features',
+          'sellingPrice', 'deliveryDays', 'isAiGenerated', 'published', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'category', 'description', 'imageUrl', 'features',
+          'sellingPrice', 'deliveryDays', 'techStack', 'isAiGenerated', 'published',
+          'featured', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.category is string && data.category.size() >= 2 && data.category.size() <= 80
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 600
+        && data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 1000
+        && data.features is list && data.features.size() >= 1 && data.features.size() <= 10
+        && data.features[0] is string && data.features[0].size() <= 120
+        && data.sellingPrice is number && data.sellingPrice >= 0 && data.sellingPrice <= 10000000
+        && data.deliveryDays is int && data.deliveryDays >= 1 && data.deliveryDays <= 365
+        && (!('techStack' in data) || (data.techStack is string && data.techStack.size() <= 160))
+        && data.isAiGenerated is bool
+        && data.published is bool
+        && (!('featured' in data) || data.featured is bool)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWebsiteCost(data) {
+      return data.keys().hasAll([
+          'websiteId', 'domainCost', 'hostingCost', 'otherCosts', 'profitMargin', 'sellingPrice', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'websiteId', 'domainCost', 'hostingCost', 'otherCosts', 'profitMargin', 'sellingPrice', 'updatedAt'
+        ])
+        && isValidId(data.websiteId)
+        && data.domainCost is number && data.domainCost >= 0 && data.domainCost <= 1000000
+        && data.hostingCost is number && data.hostingCost >= 0 && data.hostingCost <= 1000000
+        && data.otherCosts is number && data.otherCosts >= 0 && data.otherCosts <= 1000000
+        && data.profitMargin is number && data.profitMargin >= 0 && data.profitMargin <= 1000000
+        && data.sellingPrice is number && data.sellingPrice >= 0 && data.sellingPrice <= 10000000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['id', 'name', 'slug', 'order'])
+        && data.keys().hasOnly(['id', 'name', 'slug', 'description', 'order'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 80
+        && (!('description' in data) || (data.description is string && data.description.size() <= 240))
+        && data.order is int && data.order >= 0 && data.order <= 1000;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id', 'userId', 'customerName', 'websiteId', 'websiteName',
+          'category', 'priceBdt', 'channel', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'customerName', 'customerPhone', 'customerEmail',
+          'websiteId', 'websiteName', 'category', 'priceBdt', 'channel', 'notes',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120
+        && (!('customerPhone' in data) || (data.customerPhone is string && data.customerPhone.size() <= 40))
+        && (!('customerEmail' in data) || (data.customerEmail is string && data.customerEmail.size() <= 160))
+        && isValidId(data.websiteId)
+        && data.websiteName is string && data.websiteName.size() >= 1 && data.websiteName.size() <= 120
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+        && data.priceBdt is number && data.priceBdt >= 0 && data.priceBdt <= 10000000
+        && data.channel in ['messenger', 'whatsapp', 'web']
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000))
+        && data.status in ['pending', 'contacted', 'in_progress', 'completed', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'source', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'userId', 'name', 'email', 'phone', 'businessName', 'source', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && (!('email' in data) || (data.email is string && data.email.size() <= 160))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+        && (!('businessName' in data) || (data.businessName is string && data.businessName.size() <= 160))
+        && data.source in ['web', 'whatsapp', 'messenger']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['id', 'userId', 'senderName', 'channel', 'content', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'userId', 'senderName', 'senderContact', 'channel',
+          'content', 'recommendedWebsite', 'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 120
+        && (!('senderContact' in data) || (data.senderContact is string && data.senderContact.size() <= 160))
+        && data.channel in ['web', 'whatsapp', 'messenger']
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 2000
+        && (!('recommendedWebsite' in data) || (data.recommendedWebsite is string && data.recommendedWebsite.size() <= 120))
+        && data.status in ['unread', 'replied', 'handoff', 'resolved']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicSettings(data) {
+      return data.keys().hasAll(['messengerUrl', 'agentEnabled', 'updatedAt'])
+        && data.keys().hasOnly(['messengerUrl', 'whatsappNumber', 'agentEnabled', 'updatedAt'])
+        && data.messengerUrl is string && data.messengerUrl.size() <= 500
+        && (!('whatsappNumber' in data) || (data.whatsappNumber is string && data.whatsappNumber.size() <= 40))
+        && data.agentEnabled is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateSettings(data) {
+      return data.keys().hasAll([
+          'defaultDomainCost', 'defaultHostingCost', 'defaultOtherCosts',
+          'defaultProfitMargin', 'autoNotifyOwner', 'allowHumanHandoff', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'defaultDomainCost', 'defaultHostingCost', 'defaultOtherCosts',
+          'defaultProfitMargin', 'n8nWebhookUrl', 'whatsappProvider',
+          'whatsappPhoneNumberId', 'ownerNotifyPhone', 'agentInstructions',
+          'autoNotifyOwner', 'allowHumanHandoff', 'updatedAt'
+        ])
+        && data.defaultDomainCost is number && data.defaultDomainCost >= 0 && data.defaultDomainCost <= 1000000
+        && data.defaultHostingCost is number && data.defaultHostingCost >= 0 && data.defaultHostingCost <= 1000000
+        && data.defaultOtherCosts is number && data.defaultOtherCosts >= 0 && data.defaultOtherCosts <= 1000000
+        && data.defaultProfitMargin is number && data.defaultProfitMargin >= 0 && data.defaultProfitMargin <= 1000000
+        && (!('n8nWebhookUrl' in data) || (data.n8nWebhookUrl is string && data.n8nWebhookUrl.size() <= 500))
+        && (!('whatsappProvider' in data) || (data.whatsappProvider is string && data.whatsappProvider.size() <= 80))
+        && (!('whatsappPhoneNumberId' in data) || (data.whatsappPhoneNumberId is string && data.whatsappPhoneNumberId.size() <= 120))
+        && (!('ownerNotifyPhone' in data) || (data.ownerNotifyPhone is string && data.ownerNotifyPhone.size() <= 40))
+        && (!('agentInstructions' in data) || (data.agentInstructions is string && data.agentInstructions.size() <= 3000))
+        && data.autoNotifyOwner is bool
+        && data.allowHumanHandoff is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAgentLog(data) {
+      return data.keys().hasAll([
+          'id', 'userId', 'customerMessage', 'agentReply',
+          'language', 'needsHumanHandoff', 'leadCaptured', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'customerName', 'customerMessage', 'agentReply',
+          'language', 'recommendedWebsiteId', 'needsHumanHandoff', 'leadCaptured', 'createdAt'
+        ])
+        && isValidId(data.id)
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 120))
+        && data.customerMessage is string && data.customerMessage.size() >= 1 && data.customerMessage.size() <= 2000
+        && data.agentReply is string && data.agentReply.size() >= 1 && data.agentReply.size() <= 4000
+        && data.language in ['bn', 'en', 'mixed']
+        && (!('recommendedWebsiteId' in data) || (data.recommendedWebsiteId is string && data.recommendedWebsiteId.size() <= 128))
+        && data.needsHumanHandoff is bool
+        && data.leadCaptured is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.createdAt is timestamp;
+    }
+
+    // 1. Public Marketplace Websites (No internal cost fields)
+    match /websites/{websiteId} {
+      allow get: if isValidId(websiteId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin()
+        && isValidId(websiteId)
+        && isValidWebsite(incoming())
+        && incoming().id == websiteId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(websiteId)
+        && isValidWebsite(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(websiteId);
+    }
+
+    // 2. Internal Website Costs (Admin Only - Never Exposed to Customers)
+    match /website_costs/{websiteId} {
+      allow get: if isAdmin() && isValidId(websiteId);
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        && isValidId(websiteId)
+        && isValidWebsiteCost(incoming())
+        && incoming().websiteId == websiteId
+        && incoming().updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/websites/$(websiteId));
+      allow update: if isAdmin()
+        && isValidId(websiteId)
+        && isValidWebsiteCost(incoming())
+        && incoming().websiteId == existing().websiteId
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(websiteId);
+    }
+
+    // 3. Categories
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(categoryId)
+        && isValidCategory(incoming())
+        && incoming().id == categoryId;
+      allow update: if isAdmin()
+        && isValidId(categoryId)
+        && isValidCategory(incoming())
+        && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    // 4. Orders
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidOrder(incoming())
+        && incoming().id == orderId
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && (incoming().status == 'pending' || isAdmin())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/websites/$(incoming().websiteId));
+      allow update: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidOrder(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid
+            && !(existing().status in ['completed', 'cancelled'])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'customerPhone', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // 5. Customers (PII Isolated)
+    match /customers/{customerId} {
+      allow get: if isValidId(customerId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomer(incoming())
+        && incoming().id == customerId
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomer(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'businessName', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(customerId);
+    }
+
+    // 6. Messages
+    match /messages/{messageId} {
+      allow get: if isValidId(messageId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(messageId)
+        && isValidMessage(incoming())
+        && incoming().id == messageId
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && (incoming().status == 'unread' || isAdmin())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(messageId)
+        && isValidMessage(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'recommendedWebsite', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(messageId);
+    }
+
+    // 7. Settings (Split Public vs Admin-Only Private)
+    match /settings/public {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && isValidPublicSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /settings/private {
+      allow get: if isAdmin();
+      allow list: if false;
+      allow create, update: if isAdmin()
+        && isValidPrivateSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 8. AI Agent Logs
+    match /agent_logs/{logId} {
+      allow get: if isValidId(logId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(logId)
+        && isValidAgentLog(incoming())
+        && incoming().id == logId
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(logId)
+        && isValidAgentLog(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['needsHumanHandoff', 'leadCaptured', 'recommendedWebsiteId']);
+      allow delete: if isAdmin() && isValidId(logId);
+    }
+
+    // 9. Admin Membership
+    match /admins/{adminId} {
+      allow get: if isAdmin() && isValidId(adminId);
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        && isValidId(adminId)
+        && isValidAdminUser(incoming())
+        && incoming().uid == adminId
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "AR Tech",
+  "description": "AR Tech — Premium AI Website Design Marketplace with admin-controlled BDT pricing, Facebook Messenger ordering, WhatsApp AI Agent (n8n + Gemini), and Firebase backend.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
