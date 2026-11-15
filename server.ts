@@ -255,6 +255,13 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ar-tech-api', timestamp: new Date().toISOString() });
 });
 
+// Downloadable single-file standalone index.html
+app.get('/download/index.html', (_req, res) => {
+  const standalonePath = path.resolve(__dirname, 'standalone', 'index.html');
+  res.setHeader('Content-Disposition', 'attachment; filename="index.html"');
+  res.sendFile(standalonePath);
+});
+
 // Sync live Firestore published catalog & instructions into server cache
 app.post('/api/n8n/catalog-sync', (req, res) => {
   const { catalog, agentInstructions, allowHumanHandoff } = req.body || {};
